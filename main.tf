@@ -339,7 +339,7 @@ resource "aws_ecs_service" "inventory_service" {
   desired_count   = 1
   launch_type     = "FARGATE"
 
-  health_check_grace_period_seconds = 60
+  health_check_grace_period_seconds = 240
 
   load_balancer {
     target_group_arn = aws_lb_target_group.inventory_service.arn
