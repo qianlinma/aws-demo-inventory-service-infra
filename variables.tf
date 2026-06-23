@@ -73,3 +73,19 @@ variable "inventory_container_port" {
   type        = number
   default     = 8080
 }
+
+variable "service_discovery_namespace_name" {
+  # Cloud Map private DNS namespace 名字。
+  # 这个 namespace 由 product infra 创建，inventory infra 只负责查找并加入。
+  description = "Existing Cloud Map private DNS namespace name."
+  type        = string
+  default     = "demo.local"
+}
+
+variable "inventory_service_discovery_name" {
+  # Inventory service 在 Cloud Map 里的服务名。
+  # 配合 demo.local 后，最终 DNS name 是 inventory.demo.local。
+  description = "Cloud Map service name for inventory service."
+  type        = string
+  default     = "inventory"
+}
