@@ -29,14 +29,14 @@ data "aws_ecs_cluster" "demo" {
 }
 
 # 查找已经存在的 Cloud Map private DNS namespace。
-# 这个 namespace 是 product infra 创建的 demo.local。
+# 这个 namespace 是 product infra 创建的 demo.internal。
 # Inventory service 不自己创建 namespace，只加入同一个微服务命名空间。
 data "aws_service_discovery_dns_namespace" "demo" {
-  # 要查找的 namespace 名字，默认是 demo.local。
+  # 要查找的 namespace 名字，默认是 demo.internal。
   name = var.service_discovery_namespace_name
 
   # DNS_PRIVATE 表示这个 namespace 只在 VPC 内部可解析。
-  # 外网用户不能通过 inventory.demo.local 访问它。
+  # 外网用户不能通过 inventory.demo.internal 访问它。
   type = "DNS_PRIVATE"
 }
 
@@ -185,7 +185,7 @@ resource "aws_security_group" "inventory_task" {
 
   # 允许 product backend task 直接访问 inventory task 的 8080 端口。
   # 这是给 Cloud Map 服务发现路径用的：
-  # product -> inventory.demo.local -> inventory task private IP:8080。
+  # product -> inventory.demo.internal -> inventory task private IP:8080。
   ingress {
     # 这条规则的说明，会显示在 AWS Security Group Console 里。
     description = "Allow product service direct access through Cloud Map"
@@ -250,13 +250,13 @@ resource "aws_lb_listener" "inventory_http" {
 # 它不是业务代码里的 InventoryService，而是 AWS 里的“服务名注册记录”。
 resource "aws_service_discovery_service" "inventory" {
   # Cloud Map service 的名字，默认是 inventory。
-  # 配合 namespace demo.local，最终 DNS name 会是 inventory.demo.local。
+  # 配合 namespace demo.internal，最终 DNS name 会是 inventory.demo.internal。
   name = var.inventory_service_discovery_name
 
   # 配置这个 Cloud Map service 要怎么生成 DNS 记录。
   dns_config {
     # 指定这个 service 属于哪个 private DNS namespace。
-    # 这里引用的是 product infra 创建的 demo.local namespace。
+    # 这里引用的是 product infra 创建的 demo.internal namespace。
     namespace_id = data.aws_service_discovery_dns_namespace.demo.id
 
     # MULTIVALUE 表示 DNS 查询可以返回多个健康 task IP。
@@ -280,6 +280,10 @@ resource "aws_service_discovery_service" "inventory" {
   health_check_custom_config {
     # 失败阈值，设置为 1 表示 ECS 判断实例不健康后会比较快从服务发现里移除。
     failure_threshold = 1
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
@@ -355,7 +359,7 @@ resource "aws_ecs_service" "inventory_service" {
 
   # 把这个 ECS service 注册到 Cloud Map。
   # ECS 会把运行中的 inventory task private IP 写入 Cloud Map。
-  # 这样 product service 查询 inventory.demo.local 时，就能解析到 inventory task。
+  # 这样 product service 查询 inventory.demo.internal 时，就能解析到 inventory task。
   service_registries {
     # 指向上面创建的 aws_service_discovery_service.inventory。
     # 也就是把 ECS service 和 Cloud Map service 绑定起来。
